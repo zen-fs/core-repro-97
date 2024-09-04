@@ -1,0 +1,7 @@
+{
+	"type": "module",
+	"dependencies": {
+		"@zenfs/core": "^0.16.4",
+		"@zenfs/dom": "^0.2.14"
+	}
+}
