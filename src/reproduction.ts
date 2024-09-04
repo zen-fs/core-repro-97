@@ -145,6 +145,7 @@ async function exec(line: string) {
 				return;
 			case 'default':
 				{
+					cli.setPrompt('> ');
 					for (const command of [
 						'cp /simple.txt /Desktop',
 						'cp /simple.txt /Documents',
@@ -155,6 +156,7 @@ async function exec(line: string) {
 						console.log(command);
 						await exec(command);
 					}
+					cli.setPrompt(chalk.green(cwd) + '$ ');
 				}
 				break;
 			default:
