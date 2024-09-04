@@ -17,12 +17,10 @@ const serverPath = join(import.meta.dirname, '../data');
 
 createServer((request, response) => {
 	if (!existsSync(serverPath + request.url)) {
-		console.warn('[', 404, ']', request.url);
 		response.writeHead(404).end();
 		return;
 	}
 
-	console.warn('[', 200, ']', request.url);
 	response
 		.writeHead(200, { 'Content-Type': lookup(request.url) || 'text/plain' })
 		.end(readFileSync(serverPath + request.url, 'utf8'));
