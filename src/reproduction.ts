@@ -80,6 +80,12 @@ function ls(dir: string = '.') {
 	console.log(list);
 }
 
+const helpText = `
+Virtual FS shell.
+Available commands: help, ls, cp, cd, mv, rm, cat, stat, pwd, exit/quit
+Run "default" to attempt bug reproduction.
+`;
+
 await configure<typeof Overlay>({
 	mounts: {
 		'/': {
@@ -96,16 +102,16 @@ const cli = createInterface({
 	prompt: chalk.green('/') + '$ ',
 });
 
+console.log(helpText);
 cli.prompt();
-cli.on('line', async line => {
-	const [command, ...args] = line.trim().split(' ');
 
+async function exec(line: string) {
+	cli.pause();
+	const [command, ...args] = line.trim().split(' ');
 	try {
 		switch (command) {
 			case 'help':
-				console.log('Virtual FS shell.');
-				console.log('Available commands: help, ls, cp, cd, mv, rm, cat, stat, pwd, exit/quit');
-				console.log('Run "default" to attempt bug reproduction.');
+				console.log(helpText);
 				break;
 			case 'ls':
 				ls(args[0]);
@@ -139,14 +145,20 @@ cli.on('line', async line => {
 				console.log('Exiting...');
 				cli.close();
 				return;
-			case 'default': {
-				await copy('/simple.txt', '/Desktop');
-				await copy('/simple.txt', '/Documents');
-				console.log('Desktop:');
-				ls('Desktop');
-				console.log('Documents:');
-				ls('Documents');
-			}
+			case 'default':
+				{
+					for (const command of [
+						'cp /simple.txt /Desktop',
+						'cp /simple.txt /Documents',
+						'ls Desktop',
+						'ls Documents',
+					]) {
+						cli.prompt();
+						console.log(command);
+						await exec(command);
+					}
+				}
+				break;
 			default:
 				console.log(`Unknown command: ${command}`);
 		}
@@ -155,7 +167,10 @@ cli.on('line', async line => {
 	}
 
 	cli.prompt();
-});
+	cli.resume();
+}
+
+cli.on('line', exec);
 
 cli.on('close', () => {
 	process.exit(0);
