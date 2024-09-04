@@ -38,9 +38,9 @@ function fileName(path: string): string {
 	return `${basename(path, extname(path))}${extname(path)}`;
 }
 
-async function copyFileAsync(source: string, destinationDirectory: string): Promise<boolean> {
-	const destination = destinationDirectory + '/' + fileName(source);
-	console.log('Destination:', destination);
+async function copyFileAsync(source: string, dir: string): Promise<boolean> {
+	const destination = dir + '/' + fileName(source);
+	console.log('Copying to:', destination);
 	await fs.promises.copyFile(source, destination);
 	return true;
 }
@@ -52,7 +52,7 @@ async function copyHandler(source: string, destination: string): Promise<boolean
 		return true;
 	}
 	const success = await copyFileAsync(source, destination);
-	console.log(`Copy ${source} -> ${destination} succeeded: ${success}`);
+	console.log(`Copy ${source} -> ${destination} ${success ? 'succeeded' : 'failed'}`);
 	return success;
 }
 
@@ -160,7 +160,7 @@ async function exec(line: string) {
 				}
 				break;
 			default:
-				console.log(`Unknown command: ${command}`);
+				console.log('Unknown command:', command);
 		}
 	} catch (error) {
 		console.error('Error:', error.message);
