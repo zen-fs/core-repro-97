@@ -1,4 +1,5 @@
 import { configure, Fetch, fs, Overlay } from '@zenfs/core';
+import { cd, cwd, resolve } from '@zenfs/core/emulation/path.js';
 import type { IndexData } from '@zenfs/core/backends/index/index.js';
 import { IndexedDB } from '@zenfs/dom';
 import 'fake-indexeddb/auto';
@@ -71,6 +72,14 @@ async function copy(source: string, destination: string): Promise<void> {
 	}
 }
 
+function ls(dir: string = '.') {
+	const list = fs
+		.readdirSync(dir)
+		.map(name => (fs.statSync(join(dir, name)).isDirectory() ? chalk.blue(name) : name))
+		.join(' ');
+	console.log(list);
+}
+
 await configure<typeof Overlay>({
 	mounts: {
 		'/': {
@@ -84,7 +93,7 @@ await configure<typeof Overlay>({
 const cli = createInterface({
 	input: process.stdin,
 	output: process.stdout,
-	prompt: '> ',
+	prompt: chalk.green('/') + '$ ',
 });
 
 cli.prompt();
@@ -95,17 +104,15 @@ cli.on('line', async line => {
 		switch (command) {
 			case 'help':
 				console.log('Virtual FS shell.');
-				console.log('Available commands: help, ls, cp, mv, rm, cat, stat, pwd, exit/quit');
+				console.log('Available commands: help, ls, cp, cd, mv, rm, cat, stat, pwd, exit/quit');
+				console.log('Run "default" to attempt bug reproduction.');
 				break;
 			case 'ls':
-				{
-					const dir = args[0] || '.';
-					const list = fs
-						.readdirSync(dir)
-						.map(name => (fs.statSync(join(dir, name)).isDirectory() ? chalk.blue(name) : name))
-						.join(' ');
-					console.log(list);
-				}
+				ls(args[0]);
+				break;
+			case 'cd':
+				cd(args[0] || resolve('.'));
+				cli.setPrompt(chalk.green(cwd) + '$ ');
 				break;
 			case 'cp':
 				await copy(args[0], args[1]);
@@ -125,14 +132,21 @@ cli.on('line', async line => {
 				console.log(inspect(fs.statSync(args[0]), { colors: true }));
 				break;
 			case 'pwd':
-				console.log(process.cwd());
+				console.log(cwd);
 				break;
 			case 'exit':
 			case 'quit':
 				console.log('Exiting...');
 				cli.close();
 				return;
-
+			case 'default': {
+				await copy('/simple.txt', '/Desktop');
+				await copy('/simple.txt', '/Documents');
+				console.log('Desktop:');
+				ls('Desktop');
+				console.log('Documents:');
+				ls('Documents');
+			}
 			default:
 				console.log(`Unknown command: ${command}`);
 		}
