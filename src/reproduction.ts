@@ -1,14 +1,17 @@
-import { basename, extname } from 'node:path';
+import { basename, extname, dirname } from 'node:path';
 import { configure, Fetch, fs, Overlay } from '@zenfs/core';
 import { IndexedDB } from '@zenfs/dom';
 import { readFileSync } from 'node:fs';
 import type { IndexData } from '@zenfs/core/backends/index/index.js';
+import { pathToFileURL } from 'node:url';
+
+const baseUrl = pathToFileURL(import.meta.dirname).href;
 
 let isInitialized = false;
 
-let indexData: IndexData;
+let index: IndexData;
 try {
-	indexData = JSON.parse(readFileSync('index.json', 'utf8'));
+	index = JSON.parse(readFileSync('index.json', 'utf8'));
 } catch (e) {
 	console.error('Invalid index.');
 	process.exit();
@@ -22,7 +25,7 @@ async function initZenFSAsync(): Promise<void> {
 		mounts: {
 			'/': {
 				backend: Overlay,
-				readable: { backend: Fetch, index: indexData, baseUrl: 'osdrive' },
+				readable: { backend: Fetch, index, baseUrl },
 				writable: { backend: IndexedDB, storeName: 'fs-cache' },
 			},
 		},
