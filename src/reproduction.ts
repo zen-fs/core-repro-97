@@ -4,17 +4,24 @@ import { IndexedDB } from '@zenfs/dom';
 import { lookup } from 'mime-types';
 import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { basename, extname } from 'node:path';
+import { basename, extname, join } from 'node:path';
+import 'fake-indexeddb/auto';
 
 const port = 11730;
 
+const serverPath = join(import.meta.dirname, '../data');
+
 createServer((request, response) => {
-	if (!existsSync(request.url)) {
+	if (!existsSync(serverPath + request.url)) {
+		console.warn('[', 404, ']', request.url);
 		response.writeHead(404).end();
 		return;
 	}
 
-	response.writeHead(200, { 'Content-Type': lookup(request.url) || 'text/plain' }).end(readFileSync(request.url, 'utf8'));
+	console.warn('[', 200, ']', request.url);
+	response
+		.writeHead(200, { 'Content-Type': lookup(request.url) || 'text/plain' })
+		.end(readFileSync(serverPath + request.url, 'utf8'));
 }).listen(port);
 
 let index: IndexData;
