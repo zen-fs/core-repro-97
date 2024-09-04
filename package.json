@@ -1,10 +1,14 @@
 {
 	"type": "module",
 	"scripts": {
-		"test": "npx make-index data -o index.json -q && tsx src/reproduction.ts"
+		"test": "tsx src/reproduction.ts",
+		"index": "npx make-index data -o index.json -q",
+		"postinstall": "npm run index"
 	},
 	"dependencies": {
+		"@types/mime-types": "^2.1.4",
 		"@zenfs/core": "^0.16.4",
-		"@zenfs/dom": "^0.2.14"
+		"@zenfs/dom": "^0.2.14",
+		"mime-types": "^2.1.35"
 	}
 }

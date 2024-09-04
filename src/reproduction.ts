@@ -1,11 +1,22 @@
-import { basename, extname, dirname } from 'node:path';
 import { configure, Fetch, fs, Overlay } from '@zenfs/core';
-import { IndexedDB } from '@zenfs/dom';
-import { readFileSync } from 'node:fs';
 import type { IndexData } from '@zenfs/core/backends/index/index.js';
-import { pathToFileURL } from 'node:url';
+import { IndexedDB } from '@zenfs/dom';
+import { lookup } from 'mime-types';
+import { existsSync, readFileSync } from 'node:fs';
+import { createServer } from 'node:http';
+import { basename, extname } from 'node:path';
+import { inspect } from 'node:util';
 
-const baseUrl = pathToFileURL(import.meta.dirname).href;
+const port = 11730;
+
+createServer((request, response) => {
+	if (!existsSync(request.url)) {
+		response.writeHead(404).end();
+		return;
+	}
+
+	response.writeHead(200, { 'Content-Type': lookup(request.url) || 'text/plain' }).end(readFileSync(request.url, 'utf8'));
+}).listen(port);
 
 let isInitialized = false;
 
@@ -25,7 +36,7 @@ async function initZenFSAsync(): Promise<void> {
 		mounts: {
 			'/': {
 				backend: Overlay,
-				readable: { backend: Fetch, index, baseUrl },
+				readable: { backend: Fetch, index, baseUrl: `http://localhost:${port}/` },
 				writable: { backend: IndexedDB, storeName: 'fs-cache' },
 			},
 		},
@@ -72,6 +83,7 @@ async function copy(source: string, destination: string): Promise<void> {
 }
 
 async function main() {
+	await initZenFSAsync();
 	console.log('Copy #1');
 	await copy('/simple.txt', '/Desktop');
 	console.log('Copy #2');
