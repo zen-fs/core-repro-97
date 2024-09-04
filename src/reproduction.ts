@@ -5,7 +5,6 @@ import { lookup } from 'mime-types';
 import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { basename, extname } from 'node:path';
-import { inspect } from 'node:util';
 
 const port = 11730;
 
@@ -18,30 +17,12 @@ createServer((request, response) => {
 	response.writeHead(200, { 'Content-Type': lookup(request.url) || 'text/plain' }).end(readFileSync(request.url, 'utf8'));
 }).listen(port);
 
-let isInitialized = false;
-
 let index: IndexData;
 try {
 	index = JSON.parse(readFileSync('index.json', 'utf8'));
 } catch (e) {
 	console.error('Invalid index.');
 	process.exit();
-}
-
-async function initZenFSAsync(): Promise<void> {
-	if (isInitialized) {
-		return;
-	}
-	await configure<typeof Overlay>({
-		mounts: {
-			'/': {
-				backend: Overlay,
-				readable: { backend: Fetch, index, baseUrl: `http://localhost:${port}/` },
-				writable: { backend: IndexedDB, storeName: 'fs-cache' },
-			},
-		},
-	});
-	isInitialized = true;
 }
 
 function fileName(path: string): string {
@@ -83,11 +64,20 @@ async function copy(source: string, destination: string): Promise<void> {
 }
 
 async function main() {
-	await initZenFSAsync();
-	console.log('Copy #1');
+	await configure<typeof Overlay>({
+		mounts: {
+			'/': {
+				backend: Overlay,
+				readable: { backend: Fetch, index, baseUrl: `http://localhost:${port}/` },
+				writable: { backend: IndexedDB, storeName: 'fs-cache' },
+			},
+		},
+	});
+	console.log(await fs.readdirSync('/'));
+	/*console.log('Copy #1');
 	await copy('/simple.txt', '/Desktop');
 	console.log('Copy #2');
-	await copy('/simple.txt', '/Documents');
+	await copy('/simple.txt', '/Documents');*/
 }
 
 main();
