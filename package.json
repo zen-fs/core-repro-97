@@ -1,7 +1,7 @@
 {
 	"type": "module",
 	"scripts": {
-		"test": "npx make-index data -o index.json && tsx src/reproduction.ts"
+		"test": "npx make-index data -o index.json -q && tsx src/reproduction.ts"
 	},
 	"dependencies": {
 		"@zenfs/core": "^0.16.4",
