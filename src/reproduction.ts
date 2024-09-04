@@ -1,11 +1,14 @@
 import { configure, Fetch, fs, Overlay } from '@zenfs/core';
 import type { IndexData } from '@zenfs/core/backends/index/index.js';
 import { IndexedDB } from '@zenfs/dom';
+import 'fake-indexeddb/auto';
 import { lookup } from 'mime-types';
 import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { basename, extname, join } from 'node:path';
-import 'fake-indexeddb/auto';
+import { inspect } from 'node:util';
+import { createInterface } from 'node:readline';
+import chalk from 'chalk';
 
 const port = 11730;
 
@@ -54,8 +57,6 @@ async function copyHandler(source: string, destination: string): Promise<boolean
 	return success;
 }
 
-declare function successHandler(destination: string): void;
-
 async function copy(source: string, destination: string): Promise<void> {
 	const folderQueue: string[] = [];
 
@@ -65,26 +66,83 @@ async function copy(source: string, destination: string): Promise<void> {
 	}
 
 	const success = await copyHandler(source, destination);
-	if (success) {
-		successHandler(destination);
+	if (!success) {
+		console.log('cp: failed');
 	}
 }
 
-async function main() {
-	await configure<typeof Overlay>({
-		mounts: {
-			'/': {
-				backend: Overlay,
-				readable: { backend: Fetch, index, baseUrl: `http://localhost:${port}/` },
-				writable: { backend: IndexedDB, storeName: 'fs-cache' },
-			},
+await configure<typeof Overlay>({
+	mounts: {
+		'/': {
+			backend: Overlay,
+			readable: { backend: Fetch, index, baseUrl: `http://localhost:${port}/` },
+			writable: { backend: IndexedDB, storeName: 'fs-cache' },
 		},
-	});
-	console.log(await fs.readdirSync('/'));
-	/*console.log('Copy #1');
-	await copy('/simple.txt', '/Desktop');
-	console.log('Copy #2');
-	await copy('/simple.txt', '/Documents');*/
-}
+	},
+});
 
-main();
+const cli = createInterface({
+	input: process.stdin,
+	output: process.stdout,
+	prompt: '> ',
+});
+
+cli.prompt();
+cli.on('line', async line => {
+	const [command, ...args] = line.trim().split(' ');
+
+	try {
+		switch (command) {
+			case 'help':
+				console.log('Virtual FS shell.');
+				console.log('Available commands: help, ls, cp, mv, rm, cat, stat, pwd, exit/quit');
+				break;
+			case 'ls':
+				{
+					const dir = args[0] || '.';
+					const list = fs
+						.readdirSync(dir)
+						.map(name => (fs.statSync(join(dir, name)).isDirectory() ? chalk.blue(name) : name))
+						.join(' ');
+					console.log(list);
+				}
+				break;
+			case 'cp':
+				await copy(args[0], args[1]);
+				break;
+			case 'mv':
+				fs.renameSync(args[0], args[1]);
+				console.log(`Moved ${args[0]} to ${args[1]}`);
+				break;
+			case 'rm':
+				fs.unlinkSync(args[0]);
+				console.log(`Removed ${args[0]}`);
+				break;
+			case 'cat':
+				console.log(fs.readFileSync(args[0], 'utf8'));
+				break;
+			case 'stat':
+				console.log(inspect(fs.statSync(args[0]), { colors: true }));
+				break;
+			case 'pwd':
+				console.log(process.cwd());
+				break;
+			case 'exit':
+			case 'quit':
+				console.log('Exiting...');
+				cli.close();
+				return;
+
+			default:
+				console.log(`Unknown command: ${command}`);
+		}
+	} catch (error) {
+		console.error('Error:', error.message);
+	}
+
+	cli.prompt();
+});
+
+cli.on('close', () => {
+	process.exit(0);
+});
